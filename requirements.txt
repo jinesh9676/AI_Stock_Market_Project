@@ -1,0 +1,9 @@
+streamlit
+.\yfinance-1.6.0
+pandas
+numpy
+scikit-learn
+torch
+torchvision
+torchaudio
+altair
