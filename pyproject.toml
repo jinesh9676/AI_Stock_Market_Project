@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "ai-stock-market-project"
+version = "1.0.0"
+description = "AI Stock Market Prediction System"
+authors = ["Jinesh Shah"]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.14"
+streamlit = "*"
+pandas = "*"
+numpy = "*"
+yfinance = "*"
+altair = "*"
+torch = "*"
+scikit-learn = "*"

@@ -2,6 +2,7 @@
 import sys
 import subprocess
 import time
+from pathlib import Path
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -13,82 +14,93 @@ import torch.optim as optim
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
+BASE_DIR = Path(__file__).resolve().parent
+ENV_DIR = BASE_DIR / "env"
+
+PACKAGES = [
+    "streamlit",
+    "pandas",
+    "numpy",
+    "yfinance",
+    "altair",
+    "torch",
+    "scikit-learn"
+]
+
+MODULES = [
+    "streamlit",
+    "pandas",
+    "numpy",
+    "yfinance",
+    "altair",
+    "torch",
+    "sklearn"
+]
+
+IS_LIVE = (
+    os.environ.get("IS_STREAMLIT_CLOUD", "").lower() == "true"
+    or Path("/mount/src").exists()
+)
+
+
 # ==========================================================
-# FIRST-RUN DEPENDENCY INSTALLER
+# FIRST-RUN DEPENDENCY INSTALLER - LOCAL COMPUTER
 # ==========================================================
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-REQUIREMENTS = os.path.join(BASE_DIR, "requirements.txt")
+def local_setup():
+    if os.name != "nt":
+        return
 
-if not os.environ.get("AI_STOCK_DEPENDENCIES_CHECKED"):
+    python = ENV_DIR / "Scripts" / "python.exe"
 
-    required_modules = {
-        "streamlit": "streamlit",
-        "yfinance": "yfinance",
-        "pandas": "pandas",
-        "numpy": "numpy",
-        "sklearn": "scikit-learn",
-        "torch": "torch",
-        "altair": "altair"
-    }
-
-    missing_packages = []
-
-    for module_name, package_name in required_modules.items():
-        try:
-            __import__(module_name)
-        except ImportError:
-            missing_packages.append(package_name)
-
-    if missing_packages:
-        print("=" * 60)
-        print("AI Stock Market - First Time Setup")
-        print("=" * 60)
-        print("Installing required Python packages...")
-        print()
-
-        if os.path.exists(REQUIREMENTS):
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "pip",
-                    "install",
-                    "-r",
-                    REQUIREMENTS
-                ]
-            )
-
-            if result.returncode != 0:
-                print()
-                print("ERROR: Package installation failed.")
-                sys.exit(1)
-
-        else:
-            print("ERROR: requirements.txt not found.")
-            sys.exit(1)
-
-        print()
-        print("Package installation completed.")
-        print("=" * 60)
-
-    os.environ["AI_STOCK_DEPENDENCIES_CHECKED"] = "1"
-if __name__ == "__main__" and not os.environ.get("STREAMLIT_APP_RUNNING"):
-    env = os.environ.copy()
-    env["STREAMLIT_APP_RUNNING"] = "1"
-
-    subprocess.run(
-        [
+    if not python.exists():
+        print("Creating env folder...")
+        subprocess.check_call([
             sys.executable,
+            "-m",
+            "venv",
+            str(ENV_DIR)
+        ])
+
+    check = subprocess.run([
+        str(python),
+        "-c",
+        "import " + ", ".join(MODULES)
+    ])
+
+    if check.returncode != 0:
+        print("Installing missing packages...")
+        subprocess.check_call([
+            str(python),
+            "-m",
+            "pip",
+            "install",
+            *PACKAGES
+        ])
+
+    if not os.environ.get("AI_STOCK_ENV_ACTIVE"):
+        environment = os.environ.copy()
+        environment["AI_STOCK_ENV_ACTIVE"] = "1"
+
+        subprocess.check_call([
+            str(python),
             "-m",
             "streamlit",
             "run",
-            os.path.abspath(__file__)
-        ],
-        env=env
-    )
+            str(BASE_DIR / "app.py"),
+            "--server.headless=false"
+        ], env=environment)
 
-    sys.exit(0)
+        sys.exit(0)
+
+
+# ============================================================
+# LIVE WEBSITE - MANAGED ENVIRONMENT
+# ============================================================
+
+if not IS_LIVE and os.name == "nt":
+    local_setup()
+
 st.set_page_config(
     page_title="AI Stock Market",
     page_icon="📈",
